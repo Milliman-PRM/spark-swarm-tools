@@ -52,18 +52,25 @@ async def main(loop) -> int:
 
     creds_jenkins = get_jenkins_credentials()
     async with aiohttp.ClientSession(auth=creds_jenkins) as session:
-        my_task = loop.create_task(get_json_from_url(
-            session,
-            URL_JENKINS / 'api' / 'json',
-        ))
-        print(type(my_task))
-        print(my_task.done())
-        LOGGER.info("Aren't I awesome!")
-        await asyncio.sleep(4)
-        LOGGER.info("I'm done sleeping...")
-        my_result = await my_task
-        print(my_task.done())
-        print(type(my_result))
+
+        # Silly sized `tree` parameter to get exactly what we want
+        # If we wanted to switch to xml, we could also filter the results on server side w/ xpath
+        url_computers = (URL_JENKINS / 'computer' / 'api' / 'json').with_query({
+            'tree': '*,computer[executors[currentExecutable[*,actions[*,causes[*],parameters[*]]]]]'
+            })
+        computers = await get_json_from_url(session, url_computers)
+        LOGGER.debug('Found the following keys: %s', computers.keys())
+        LOGGER.debug('Claims this many are busy: %s', computers['busyExecutors'])
+        for computer in computers['computer']:
+            for executor in computer['executors']:
+                executable = executor['currentExecutable']
+                if not executable:
+                    continue
+                LOGGER.debug(
+                    'Building %s on %s',
+                    executable['fullDisplayName'],
+                    executable['builtOn'],
+                )
 
     LOGGER.info('Done doing something awesome.')
 
