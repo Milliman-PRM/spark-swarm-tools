@@ -18,6 +18,9 @@ import indypy.nonstandard.jenkins_tools.connect as indypy_jenkins
 
 LOGGER = logging.getLogger(__name__)
 URL_JENKINS = URL(indypy_jenkins.URL_JENKINS_LOCAL)
+URL_JENKINS_QUEUE = (URL_JENKINS / 'queue' / 'api' / 'json').with_query({
+    'tree': 'items[task[url]]'
+})
 
 # =============================================================================
 # LIBRARIES, LOCATIONS, LITERALS, ETC. GO ABOVE HERE
@@ -95,12 +98,10 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
         return None
 
     url_job = URL(executable['url']).parent.parent
-    url_queue = (URL_JENKINS / 'queue' / 'api' / 'json').with_query({
-        'tree': 'items[task[url]]'
-    })
-    queue = await get_json_from_url(session_jenkins, url_queue)
+    queue = await get_json_from_url(session_jenkins, URL_JENKINS_QUEUE)
     for item in queue['items']:
         LOGGER.debug('Found the following queue item %s', item)
+        # Stupid off by one due to trailing slash...
         if item['task']['url'].lower()[:-1] == str(url_job).lower():
             LOGGER.info('%s is already in queue to be swarmed', url_job)
             return None
