@@ -90,6 +90,9 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
         # Should test this earlier, but testing here to make sure spark application sniffing works
         LOGGER.info('Jenkins job is not configred for swarming: %s', executable['url'])
         return None
+    if params_current['spark_swarm_master'] != 'none':
+        LOGGER.info('%s is already participating in a swarm', name_computer)
+        return None
 
     params_new = params_current.copy()
     params_new['spark_swarm_master'] = name_computer
