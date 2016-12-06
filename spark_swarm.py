@@ -46,26 +46,43 @@ async def get_json_from_url(session, url) -> dict:
             return None
 
 
-async def evaluate_opportunity(session, executable):
+async def evaluate_opportunity(session_jenkins, session_noauth, executable):
     """Evaluate a possible opportunity to make an ad-hoc Spark cluster"""
     name_computer = executable['builtOn']
     LOGGER.debug('Evaluating opportunities on %s', name_computer)
     url_cattle = URL('http://' + name_computer)
     url_spark_rest = url_cattle.with_port(4040) / 'api' / 'v1'
+
+    for action in executable['actions']:
+        if 'parameters' not in action:
+            continue
+        params_current = {
+            param['name']: param['value']
+            for param in action['parameters']
+        }
+        LOGGER.debug('Found the current parameters: %s', params_current)
+
     try:
         applications = await get_json_from_url(
-            session,
+            session_noauth,
             (url_spark_rest / 'applications').with_query({'status': 'running'}),
         )
     except OSError:
         LOGGER.info('No Spark application found on %s', name_computer)
         return None
+
     for application in applications:
-        LOGGER.debug(
+        LOGGER.info(
             'Found the following application: %s on %s',
             application['name'],
             name_computer,
         )
+    assert len(applications) == 1, 'Expected only a single application, got {} on {}'.format(
+        len(applications),
+        name_computer,
+    )
+    application = applications[0]
+
     return None
 
 
@@ -97,6 +114,7 @@ async def main(loop) -> int:
                     executable['builtOn'],
                 )
                 tasks_evaluation.append(loop.create_task(evaluate_opportunity(
+                    session_jenkins,
                     session_noauth,
                     executable,
                 )))
