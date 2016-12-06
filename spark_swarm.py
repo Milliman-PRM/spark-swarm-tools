@@ -49,18 +49,21 @@ async def get_json_from_url(session, url) -> dict:
 async def evaluate_opportunity(session_jenkins, session_noauth, executable):
     """Evaluate a possible opportunity to make an ad-hoc Spark cluster"""
     name_computer = executable['builtOn']
-    LOGGER.debug('Evaluating opportunities on %s', name_computer)
+    LOGGER.info('Evaluating opportunities on %s', name_computer)
     url_cattle = URL('http://' + name_computer)
     url_spark_rest = url_cattle.with_port(4040) / 'api' / 'v1'
 
     for action in executable['actions']:
-        if 'parameters' not in action:
-            continue
-        params_current = {
-            param['name']: param['value']
-            for param in action['parameters']
-        }
-        LOGGER.debug('Found the current parameters: %s', params_current)
+        if 'parameters' in action:
+            params_current = {
+                param['name']: param['value']
+                for param in action['parameters']
+            }
+            LOGGER.debug('Found the current parameters: %s', params_current)
+            break
+    else:
+        LOGGER.info('No build parameters found.')
+        return None
 
     try:
         applications = await get_json_from_url(
@@ -82,6 +85,30 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
         name_computer,
     )
     application = applications[0]
+
+    if not {'spark_swarm_master', 'spark_swarm_application'}.issubset(params_current):
+        # Should test this earlier, but testing here to make sure spark application sniffing works
+        LOGGER.info('Jenkins job is not configred for swarming: %s', executable['url'])
+        return None
+
+    params_new = params_current.copy()
+    params_new['spark_swarm_master'] = name_computer
+    params_new['spark_swarm_application'] = application['name']
+    url_job = URL(executable['url']).parent.parent
+    url_build = url_job / 'buildWithParameters'
+    LOGGER.info('Swarming onto this job %s with these parameters %s', url_job, params_new)
+    async with session_jenkins.put(url_build, data={'parameter': params_new}) as response:
+        LOGGER.debug(
+            'Posted %s and got return code of %s',
+            url_build.human_repr(),
+            response.reason,
+        )
+        if response.reason.lower() == 'ok':
+            LOGGER.info('Swarming onto %s launched successfully', url_job)
+            return True
+        else:
+            LOGGER.info('Swarming onto %s failed with this response %s', url_job, response.reason)
+            return None
 
     return None
 
@@ -108,7 +135,7 @@ async def main(loop) -> int:
                 executable = executor['currentExecutable']
                 if not executable:
                     continue
-                LOGGER.debug(
+                LOGGER.info(
                     'Building %s on %s',
                     executable['fullDisplayName'],
                     executable['builtOn'],
