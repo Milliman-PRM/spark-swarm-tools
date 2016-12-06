@@ -146,6 +146,7 @@ async def main(loop) -> int:
                     executable,
                 )))
         results = await asyncio.gather(*tasks_evaluation)
+        LOGGER.info('Launched %s swarms', results.count(True))
 
     LOGGER.info('Done doing something awesome.')
 
