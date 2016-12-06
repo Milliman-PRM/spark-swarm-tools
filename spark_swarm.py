@@ -79,7 +79,7 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
 
     for application in applications:
         LOGGER.info(
-            'Found the following application: %s on %s',
+            'Found the following Spark application: %s on %s',
             application['name'],
             name_computer,
         )
@@ -132,6 +132,7 @@ async def main(loop) -> int:
     """A function to enclose the execution of business logic."""
     LOGGER.info('About to do something awesome.')
 
+    LOGGER.info('Setting up Jenkins authentication.')
     creds_jenkins = get_jenkins_credentials()
     async with aiohttp.ClientSession(auth=creds_jenkins) as session_jenkins:
         # Jenkins 2.0 needs a live "crumb" to be in all POST headers
@@ -142,6 +143,7 @@ async def main(loop) -> int:
         crumb_header = {crumb['crumbRequestField']: crumb['crumb']}
         LOGGER.debug('Got this crumb to use: %s', crumb_header)
 
+    LOGGER.info('Querying Jenkins for active builds')
     async with aiohttp.ClientSession(auth=creds_jenkins, headers=crumb_header) as session_jenkins, \
         aiohttp.ClientSession() as session_noauth:
         tasks_evaluation = []
@@ -182,7 +184,7 @@ if __name__ == '__main__':
     import sys
     logging.basicConfig(
         stream=sys.stdout,
-        level=logging.DEBUG,
+        level=logging.INFO,
         format='%(asctime)s|%(name)s|%(levelname)s|%(message)s',
     )
 
