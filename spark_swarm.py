@@ -90,15 +90,25 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
         # Should test this earlier, but testing here to make sure spark application sniffing works
         LOGGER.info('Jenkins job is not configred for swarming: %s', executable['url'])
         return None
-    if params_current['spark_swarm_master'] != 'none':
+    if params_current['spark_swarm_master'].lower() != 'none':
         LOGGER.info('%s is already participating in a swarm', name_computer)
         return None
+
+    url_job = URL(executable['url']).parent.parent
+    url_build = url_job / 'buildWithParameters'
+    url_queue = (URL_JENKINS / 'queue' / 'api' / 'json').with_query({
+        'tree': 'items[task[url]]'
+    })
+    queue = await get_json_from_url(session_jenkins, url_queue)
+    for item in queue['items']:
+        LOGGER.debug('Found the following que item %s', item)
+        if item['task']['url'].lower()[:-1] == str(url_job).lower():
+            LOGGER.info('%s is already in queue to be swarmed', url_job)
+            return None
 
     params_new = params_current.copy()
     params_new['spark_swarm_master'] = name_computer
     params_new['spark_swarm_application'] = application['name']
-    url_job = URL(executable['url']).parent.parent
-    url_build = url_job / 'buildWithParameters'
     LOGGER.info('Swarming onto this job %s with these parameters %s', url_job, params_new)
     async with session_jenkins.put(url_build, data={'parameter': params_new}) as response:
         LOGGER.debug(
