@@ -62,7 +62,7 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
             LOGGER.debug('Found the current parameters: %s', params_current)
             break
     else:
-        LOGGER.info('No build parameters found.')
+        LOGGER.info('No build parameters found on %s.', name_computer)
         return None
 
     try:
@@ -88,20 +88,19 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
 
     if not {'spark_swarm_master', 'spark_swarm_application'}.issubset(params_current):
         # Should test this earlier, but testing here to make sure spark application sniffing works
-        LOGGER.info('Jenkins job is not configred for swarming: %s', executable['url'])
+        LOGGER.info('Jenkins job is not configured for swarming: %s', executable['url'])
         return None
     if params_current['spark_swarm_master'].lower() != 'none':
         LOGGER.info('%s is already participating in a swarm', name_computer)
         return None
 
     url_job = URL(executable['url']).parent.parent
-    url_build = url_job / 'buildWithParameters'
     url_queue = (URL_JENKINS / 'queue' / 'api' / 'json').with_query({
         'tree': 'items[task[url]]'
     })
     queue = await get_json_from_url(session_jenkins, url_queue)
     for item in queue['items']:
-        LOGGER.debug('Found the following que item %s', item)
+        LOGGER.debug('Found the following queue item %s', item)
         if item['task']['url'].lower()[:-1] == str(url_job).lower():
             LOGGER.info('%s is already in queue to be swarmed', url_job)
             return None
@@ -110,24 +109,19 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
     params_new['spark_swarm_master'] = name_computer
     params_new['spark_swarm_application'] = application['name']
     LOGGER.info('Swarming onto this job %s with these parameters %s', url_job, params_new)
-    crumb = await get_json_from_url(session_jenkins, URL_JENKINS / 'crumbIssuer' / 'api' / 'json')
-    LOGGER.debug('Got the following crumb: %s', crumb)
+    url_build = (url_job / 'buildWithParameters').with_query(params_new)
 
-    async with session_jenkins.put(
-        url_build,
-        data=params_new,
-        headers={crumb['crumbRequestField']: crumb['crumb']},
-    ) as response:
+    async with session_jenkins.post(url_build) as response:
         LOGGER.debug(
-            'Posted %s and got return code of %s',
+            'Posted %s and got return status of %s',
             url_build.human_repr(),
             response.reason,
         )
-        if response.reason.lower() == 'ok':
+        if response.reason.lower() == 'created':
             LOGGER.info('Swarming onto %s launched successfully', url_job)
             return True
         else:
-            LOGGER.info('Swarming onto %s failed with this response %s', url_job, response.reason)
+            LOGGER.info('Swarming onto %s failed with this response: %s', url_job, response.reason)
             return None
 
     return None
@@ -138,7 +132,16 @@ async def main(loop) -> int:
     LOGGER.info('About to do something awesome.')
 
     creds_jenkins = get_jenkins_credentials()
-    async with aiohttp.ClientSession(auth=creds_jenkins) as session_jenkins, \
+    async with aiohttp.ClientSession(auth=creds_jenkins) as session_jenkins:
+        # Jenkins 2.0 needs a live "crumb" to be in all POST headers
+        crumb = await get_json_from_url(
+            session_jenkins,
+            URL_JENKINS / 'crumbIssuer' / 'api' / 'json'
+        )
+        crumb_header = {crumb['crumbRequestField']: crumb['crumb']}
+        LOGGER.debug('Got this crumb to use: %s', crumb_header)
+
+    async with aiohttp.ClientSession(auth=creds_jenkins, headers=crumb_header) as session_jenkins, \
         aiohttp.ClientSession() as session_noauth:
         tasks_evaluation = []
 
@@ -149,16 +152,16 @@ async def main(loop) -> int:
             })
         computers = await get_json_from_url(session_jenkins, url_computers)
         LOGGER.debug('Found the following keys: %s', computers.keys())
-        LOGGER.debug('Claims this many are busy: %s', computers['busyExecutors'])
+        LOGGER.debug('Claims this many cattle are busy: %s', computers['busyExecutors'])
         for computer in computers['computer']:
             for executor in computer['executors']:
                 executable = executor['currentExecutable']
                 if not executable:
                     continue
                 LOGGER.info(
-                    'Building %s on %s',
-                    executable['fullDisplayName'],
+                    '%s is building %s',
                     executable['builtOn'],
+                    executable['fullDisplayName'],
                 )
                 tasks_evaluation.append(loop.create_task(evaluate_opportunity(
                     session_jenkins,
