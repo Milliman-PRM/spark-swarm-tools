@@ -110,7 +110,14 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
     params_new['spark_swarm_master'] = name_computer
     params_new['spark_swarm_application'] = application['name']
     LOGGER.info('Swarming onto this job %s with these parameters %s', url_job, params_new)
-    async with session_jenkins.put(url_build, data={'parameter': params_new}) as response:
+    crumb = await get_json_from_url(session_jenkins, URL_JENKINS / 'crumbIssuer' / 'api' / 'json')
+    LOGGER.debug('Got the following crumb: %s', crumb)
+
+    async with session_jenkins.put(
+        url_build,
+        data=params_new,
+        headers={crumb['crumbRequestField']: crumb['crumb']},
+    ) as response:
         LOGGER.debug(
             'Posted %s and got return code of %s',
             url_build.human_repr(),
