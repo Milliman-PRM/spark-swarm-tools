@@ -39,11 +39,34 @@ async def get_json_from_url(session, url) -> dict:
     """Query a REST API endpoint and return the decoded JSON"""
     LOGGER.debug('About to query %s', url)
     async with session.get(url) as response:
-        LOGGER.debug('Queried %s and got return code of %s', url, response.reason)
+        LOGGER.debug('Queried %s and got return code of %s', url.human_repr(), response.reason)
         if response.reason.lower() == 'ok':
             return await response.json()
         else:
             return None
+
+
+async def evaluate_opportunity(session, executable):
+    """Evaluate a possible opportunity to make an ad-hoc Spark cluster"""
+    name_computer = executable['builtOn']
+    LOGGER.debug('Evaluating opportunities on %s', name_computer)
+    url_cattle = URL('http://' + name_computer)
+    url_spark_rest = url_cattle.with_port(4040) / 'api' / 'v1'
+    try:
+        applications = await get_json_from_url(
+            session,
+            (url_spark_rest / 'applications').with_query({'status': 'running'}),
+        )
+    except OSError:
+        LOGGER.info('No Spark application found on %s', name_computer)
+        return None
+    for application in applications:
+        LOGGER.debug(
+            'Found the following application: %s on %s',
+            application['name'],
+            name_computer,
+        )
+    return None
 
 
 async def main(loop) -> int:
@@ -51,14 +74,16 @@ async def main(loop) -> int:
     LOGGER.info('About to do something awesome.')
 
     creds_jenkins = get_jenkins_credentials()
-    async with aiohttp.ClientSession(auth=creds_jenkins) as session:
+    async with aiohttp.ClientSession(auth=creds_jenkins) as session_jenkins, \
+        aiohttp.ClientSession() as session_noauth:
+        tasks_evaluation = []
 
         # Silly sized `tree` parameter to get exactly what we want
         # If we wanted to switch to xml, we could also filter the results on server side w/ xpath
         url_computers = (URL_JENKINS / 'computer' / 'api' / 'json').with_query({
             'tree': '*,computer[executors[currentExecutable[*,actions[*,causes[*],parameters[*]]]]]'
             })
-        computers = await get_json_from_url(session, url_computers)
+        computers = await get_json_from_url(session_jenkins, url_computers)
         LOGGER.debug('Found the following keys: %s', computers.keys())
         LOGGER.debug('Claims this many are busy: %s', computers['busyExecutors'])
         for computer in computers['computer']:
@@ -71,6 +96,11 @@ async def main(loop) -> int:
                     executable['fullDisplayName'],
                     executable['builtOn'],
                 )
+                tasks_evaluation.append(loop.create_task(evaluate_opportunity(
+                    session_noauth,
+                    executable,
+                )))
+        results = await asyncio.gather(*tasks_evaluation)
 
     LOGGER.info('Done doing something awesome.')
 
