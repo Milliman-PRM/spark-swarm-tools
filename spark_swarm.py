@@ -52,7 +52,7 @@ async def get_json_from_url(session, url) -> dict:
 async def evaluate_opportunity(session_jenkins, session_noauth, executable):
     """Evaluate a possible opportunity to make an ad-hoc Spark cluster"""
     name_computer = executable['builtOn']
-    LOGGER.info('Evaluating opportunities on %s', name_computer)
+    LOGGER.info('%s Evaluating opportunities', name_computer)
     url_cattle = URL('http://' + name_computer)
     url_spark_rest = url_cattle.with_port(4040) / 'api' / 'v1'
 
@@ -62,10 +62,14 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
                 param['name']: param['value']
                 for param in action['parameters']
             }
-            LOGGER.debug('Found the current parameters: %s', params_current)
+            LOGGER.debug(
+                '%s Found the current parameters: %s',
+                name_computer,
+                params_current,
+            )
             break
     else:
-        LOGGER.info('No build parameters found on %s.', name_computer)
+        LOGGER.info('%s No build parameters found.', name_computer)
         return None
 
     try:
@@ -74,14 +78,14 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
             (url_spark_rest / 'applications').with_query({'status': 'running'}),
         )
     except OSError:
-        LOGGER.info('No Spark application found on %s', name_computer)
+        LOGGER.info('%s No Spark application found', name_computer)
         return None
 
     for application in applications:
         LOGGER.info(
-            'Found the following Spark application: %s on %s',
-            application['name'],
+            '%s Found the following Spark application: %s',
             name_computer,
+            application['name'],
         )
     assert len(applications) == 1, 'Expected only a single application, got {} on {}'.format(
         len(applications),
@@ -91,7 +95,11 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
 
     if not {'spark_swarm_master', 'spark_swarm_application'}.issubset(params_current):
         # Should test this earlier, but testing here to make sure spark application sniffing works
-        LOGGER.info('Jenkins job is not configured for swarming: %s', executable['url'])
+        LOGGER.info(
+            '%s Jenkins job is not configured for swarming: %s',
+            name_computer,
+            executable['url'],
+        )
         return None
     if params_current['spark_swarm_master'].lower() != 'none':
         LOGGER.info('%s is already participating in a swarm', name_computer)
@@ -109,7 +117,12 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
     params_new = params_current.copy()
     params_new['spark_swarm_master'] = name_computer
     params_new['spark_swarm_application'] = application['name']
-    LOGGER.info('Swarming onto this job %s with these parameters %s', url_job, params_new)
+    LOGGER.info(
+        '%s Swarming onto this job %s with these parameters %s',
+        name_computer,
+        url_job,
+        params_new,
+    )
     url_build = (url_job / 'buildWithParameters').with_query(params_new)
 
     async with session_jenkins.post(url_build) as response:
@@ -119,7 +132,7 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
             response.reason,
         )
         if response.reason.lower() == 'created':
-            LOGGER.info('Swarming onto %s launched successfully', url_job)
+            LOGGER.info('%s Swarming onto %s launched successfully', name_computer, url_job)
             return True
         else:
             LOGGER.info('Swarming onto %s failed with this response: %s', url_job, response.reason)
