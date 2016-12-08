@@ -5,19 +5,19 @@
   Find Spark Cluster opportunities
 
 ### DEVELOPER NOTES:
-  Try to be as project agnositic as possible
+  Try to be as project agnostic as possible
 """
 import logging
 import asyncio
 from configparser import ConfigParser
+from pathlib import Path
 
 import aiohttp
 from yarl import URL
 
-import indypy.nonstandard.jenkins_tools.connect as indypy_jenkins
-
 LOGGER = logging.getLogger(__name__)
-URL_JENKINS = URL(indypy_jenkins.URL_JENKINS_LOCAL)
+PATH_JENKINS_CONFIG = Path('H:/.jenkins')
+URL_JENKINS = URL('http://indy-jenkins.milliman.com')
 URL_JENKINS_QUEUE = (URL_JENKINS / 'queue' / 'api' / 'json').with_query({
     'tree': 'items[task[url]]'
 })
@@ -27,7 +27,7 @@ URL_JENKINS_QUEUE = (URL_JENKINS / 'queue' / 'api' / 'json').with_query({
 # =============================================================================
 
 
-def get_jenkins_credentials(path_config=indypy_jenkins.PATH_DEFAULT_CONFIG) -> aiohttp.BasicAuth:
+def get_jenkins_credentials(path_config=PATH_JENKINS_CONFIG) -> aiohttp.BasicAuth:
     """Get Jenkins credentials from the default location"""
     config = ConfigParser()
     with path_config.open('r') as fh_creds:
