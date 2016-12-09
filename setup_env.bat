@@ -1,4 +1,4 @@
-rem ### CODE OWNERS: Shea Parkes
+rem ### CODE OWNERS: Shea Parkes, Steve Gredell
 rem
 rem ### OBJECTIVE:
 rem   Do minimal environment setup

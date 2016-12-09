@@ -1,5 +1,5 @@
 """
-### CODE OWNERS: Shea Parkes
+### CODE OWNERS: Shea Parkes, Steve Gredell
 
 ### OBJECTIVE:
   Find Spark Cluster opportunities
