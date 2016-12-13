@@ -2,6 +2,8 @@
 
 This repository contains tools to enable emergent formation of multi-machine Spark Clusters.
 
+For now, at least the `prm.spark.swarm` module in the [PRM/analytics-pipeline repository](https://indy-github.milliman.com/PRM/analytics-pipeline) is likely also necessary tooling (that is not provided here).
+
 ## Deployment
 
 This repository will have continuous deployment; a dedicated Jenkins job will checkout and execute this repository periodically.
