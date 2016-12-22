@@ -93,6 +93,32 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
     )
     application = applications[0]
 
+    try:
+        jobs = await get_json_from_url(
+            session_noauth,
+            (url_spark_rest / 'applications' / application['id'] / 'jobs').with_query({
+                'status': 'running',
+            }),
+        )
+    except OSError:
+        LOGGER.info('%s Spark application %s no longer found', name_computer, application['name'])
+        return None
+
+    if jobs:
+        LOGGER.info(
+            '%s Spark application %s currently working on job %s',
+            name_computer,
+            application['name'],
+            jobs[0]['name'],
+        )
+    else:
+        LOGGER.info(
+            '%s Spark application %s not currently working on any jobs',
+            name_computer,
+            application['name'],
+        )
+        return None
+
     if not {'spark_swarm_master', 'spark_swarm_application'}.issubset(params_current):
         # Should test this earlier, but testing here to make sure spark application sniffing works
         LOGGER.info(
