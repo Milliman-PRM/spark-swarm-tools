@@ -106,7 +106,7 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
 
     if jobs:
         LOGGER.info(
-            '%s Spark application %s currently working on job %s',
+            '%s Spark application %s currently working on job: %s',
             name_computer,
             application['name'],
             jobs[0]['name'],
