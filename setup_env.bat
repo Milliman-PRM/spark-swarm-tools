@@ -1,3 +1,4 @@
+@echo off
 rem ### CODE OWNERS: Shea Parkes, Steve Gredell
 rem
 rem ### OBJECTIVE:
