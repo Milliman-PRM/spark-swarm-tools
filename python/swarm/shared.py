@@ -64,3 +64,23 @@ async def get_jenkins_crumb(creds_jenkins=None):
         LOGGER.debug('Got this crumb to use: %s', crumb_header)
     return crumb_header
 
+
+def extract_params(executable):
+    """Extract parameters from Jenkins response"""
+    name_computer = executable['builtOn']
+    for action in executable['actions']:
+        if 'parameters' in action:
+            params_current = {
+                param['name']: str(param['value'])
+                for param in action['parameters']
+            }
+            LOGGER.debug(
+                '%s Found the current parameters: %s',
+                name_computer,
+                params_current,
+            )
+            break
+    else:
+        LOGGER.info('%s No build parameters found.', name_computer)
+        return None
+    return params_current
