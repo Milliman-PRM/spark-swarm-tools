@@ -48,3 +48,19 @@ async def get_json_from_url(session, url) -> dict:
         else:
             return None
 
+
+async def get_jenkins_crumb(creds_jenkins=None):
+    """Get the crumb_header for Jenkins"""
+    LOGGER.info('Setting up Jenkins authentication.')
+    if not creds_jenkins:
+        creds_jenkins = get_jenkins_credentials()
+    async with aiohttp.ClientSession(auth=creds_jenkins) as session_jenkins:
+        # Jenkins 2.0 needs a live "crumb" to be in all POST headers
+        crumb = await get_json_from_url(
+            session_jenkins,
+            URL_JENKINS / 'crumbIssuer' / 'api' / 'json'
+        )
+        crumb_header = {crumb['crumbRequestField']: crumb['crumb']}
+        LOGGER.debug('Got this crumb to use: %s', crumb_header)
+    return crumb_header
+
