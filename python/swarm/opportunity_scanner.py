@@ -28,20 +28,8 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
     url_cattle = URL('http://' + name_computer)
     url_spark_rest = url_cattle.with_port(4040) / 'api' / 'v1'
 
-    for action in executable['actions']:
-        if 'parameters' in action:
-            params_current = {
-                param['name']: param['value']
-                for param in action['parameters']
-            }
-            LOGGER.debug(
-                '%s Found the current parameters: %s',
-                name_computer,
-                params_current,
-            )
-            break
-    else:
-        LOGGER.info('%s No build parameters found.', name_computer)
+    params_current = shared.extract_params(executable)
+    if not params_current:
         return None
 
     try:
@@ -145,15 +133,7 @@ async def main(loop) -> int:
 
     LOGGER.info('Setting up Jenkins authentication.')
     creds_jenkins = shared.get_jenkins_credentials()
-    async with aiohttp.ClientSession(auth=creds_jenkins) as session_jenkins:
-        # Jenkins 2.0 needs a live "crumb" to be in all POST headers
-        crumb = await shared.get_json_from_url(
-            session_jenkins,
-            shared.URL_JENKINS / 'crumbIssuer' / 'api' / 'json'
-        )
-        crumb_header = {crumb['crumbRequestField']: crumb['crumb']}
-        LOGGER.debug('Got this crumb to use: %s', crumb_header)
-
+    crumb_header = await shared.get_jenkins_crumb(creds_jenkins)
     LOGGER.info('Querying Jenkins for active builds')
     async with aiohttp.ClientSession(auth=creds_jenkins, headers=crumb_header) as session_jenkins, \
         aiohttp.ClientSession() as session_noauth:
