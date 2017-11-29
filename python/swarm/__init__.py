@@ -1,5 +1,5 @@
 """
-## CODE OWNERS: Steve Gredell
+## CODE OWNERS: Steve Gredell, Chas Busenburg
 
 ### OBJECTIVE:
   Mark the swarm package so it is importable
