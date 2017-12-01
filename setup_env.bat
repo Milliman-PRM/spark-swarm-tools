@@ -19,4 +19,7 @@ rem ### LIBRARIES, LOCATIONS, LITERALS, ETC. GO ABOVE HERE
 echo %~nx0 %DATE:~-4%-%DATE:~4,2%-%DATE:~7,2% %TIME%: Activating %CONDA_ENVIRONMENT% conda environment
 call activate %CONDA_ENVIRONMENT%
 
+echo %~nx0 %DATE:~-4%-%DATE:~4,2%-%DATE:~7,2% %TIME%: Add current environment to PYTHONPATH
+SET PYTHONPATH=%PYTHONPATH%;%~dp0\python
+
 echo %~nx0 %DATE:~-4%-%DATE:~4,2%-%DATE:~7,2% %TIME%: Finished setting up environment for usage/testing

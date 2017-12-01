@@ -9,44 +9,16 @@
 """
 import logging
 import asyncio
-from configparser import ConfigParser
-from pathlib import Path
 
 import aiohttp
 from yarl import URL
+from swarm import shared
 
 LOGGER = logging.getLogger(__name__)
-PATH_JENKINS_CONFIG = Path('H:/.jenkins')
-URL_JENKINS = URL('http://indy-jenkins.milliman.com')
-URL_JENKINS_QUEUE = (URL_JENKINS / 'queue' / 'api' / 'json').with_query({
-    'tree': 'items[task[url]]'
-})
 
 # =============================================================================
 # LIBRARIES, LOCATIONS, LITERALS, ETC. GO ABOVE HERE
 # =============================================================================
-
-
-def get_jenkins_credentials(path_config=PATH_JENKINS_CONFIG) -> aiohttp.BasicAuth:
-    """Get Jenkins credentials from the default location"""
-    config = ConfigParser()
-    with path_config.open('r') as fh_creds:
-        config.read_file(fh_creds)
-    return aiohttp.BasicAuth(
-        login=config['Credentials']['username'],
-        password=config['Credentials']['api_token'],
-    )
-
-
-async def get_json_from_url(session, url) -> dict:
-    """Query a REST API endpoint and return the decoded JSON"""
-    LOGGER.debug('About to query %s', url)
-    async with session.get(url) as response:
-        LOGGER.debug('Queried %s and got return code of %s', url.human_repr(), response.reason)
-        if response.reason.lower() == 'ok':
-            return await response.json()
-        else:
-            return None
 
 
 async def evaluate_opportunity(session_jenkins, session_noauth, executable):
@@ -56,24 +28,12 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
     url_cattle = URL('http://' + name_computer)
     url_spark_rest = url_cattle.with_port(4040) / 'api' / 'v1'
 
-    for action in executable['actions']:
-        if 'parameters' in action:
-            params_current = {
-                param['name']: param['value']
-                for param in action['parameters']
-            }
-            LOGGER.debug(
-                '%s Found the current parameters: %s',
-                name_computer,
-                params_current,
-            )
-            break
-    else:
-        LOGGER.info('%s No build parameters found.', name_computer)
+    params_current = shared.extract_params(executable)
+    if not params_current:
         return None
 
     try:
-        applications = await get_json_from_url(
+        applications = await shared.get_json_from_url(
             session_noauth,
             (url_spark_rest / 'applications').with_query({'status': 'running'}),
         )
@@ -94,7 +54,7 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
     application = applications[0]
 
     try:
-        jobs = await get_json_from_url(
+        jobs = await shared.get_json_from_url(
             session_noauth,
             (url_spark_rest / 'applications' / application['id'] / 'jobs').with_query({
                 'status': 'running',
@@ -132,7 +92,7 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
         return None
 
     url_job = URL(executable['url']).parent.parent
-    queue = await get_json_from_url(session_jenkins, URL_JENKINS_QUEUE)
+    queue = await shared.get_json_from_url(session_jenkins, shared.URL_JENKINS_QUEUE)
     for item in queue['items']:
         LOGGER.debug('Found the following queue item %s', item)
         # Stupid off by one due to trailing slash...
@@ -172,16 +132,8 @@ async def main(loop) -> int:
     LOGGER.info('About to do something awesome.')
 
     LOGGER.info('Setting up Jenkins authentication.')
-    creds_jenkins = get_jenkins_credentials()
-    async with aiohttp.ClientSession(auth=creds_jenkins) as session_jenkins:
-        # Jenkins 2.0 needs a live "crumb" to be in all POST headers
-        crumb = await get_json_from_url(
-            session_jenkins,
-            URL_JENKINS / 'crumbIssuer' / 'api' / 'json'
-        )
-        crumb_header = {crumb['crumbRequestField']: crumb['crumb']}
-        LOGGER.debug('Got this crumb to use: %s', crumb_header)
-
+    creds_jenkins = shared.get_jenkins_credentials()
+    crumb_header = await shared.get_jenkins_crumb(creds_jenkins)
     LOGGER.info('Querying Jenkins for active builds')
     async with aiohttp.ClientSession(auth=creds_jenkins, headers=crumb_header) as session_jenkins, \
         aiohttp.ClientSession() as session_noauth:
@@ -189,10 +141,10 @@ async def main(loop) -> int:
 
         # Silly sized `tree` parameter to get exactly what we want
         # If we wanted to switch to xml, we could also filter the results on server side w/ xpath
-        url_computers = (URL_JENKINS / 'computer' / 'api' / 'json').with_query({
+        url_computers = (shared.URL_JENKINS / 'computer' / 'api' / 'json').with_query({
             'tree': '*,computer[executors[currentExecutable[*,actions[*,causes[*],parameters[*]]]]]'
             })
-        computers = await get_json_from_url(session_jenkins, url_computers)
+        computers = await shared.get_json_from_url(session_jenkins, url_computers)
         LOGGER.debug('Found the following keys: %s', computers.keys())
         LOGGER.debug('Claims this many cattle are busy: %s', computers['busyExecutors'])
         for computer in computers['computer']:
