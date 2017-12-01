@@ -27,7 +27,9 @@ URL_JENKINS_QUEUE = (URL_JENKINS / 'queue' / 'api' / 'json').with_query({
 # =============================================================================
 
 
-def get_jenkins_credentials(path_config=PATH_JENKINS_CONFIG) -> aiohttp.BasicAuth:
+def get_jenkins_credentials(
+        path_config: Path=PATH_JENKINS_CONFIG,
+) -> aiohttp.BasicAuth:
     """Get Jenkins credentials from the default location"""
     config = ConfigParser()
     with path_config.open('r') as fh_creds:
@@ -38,7 +40,10 @@ def get_jenkins_credentials(path_config=PATH_JENKINS_CONFIG) -> aiohttp.BasicAut
     )
 
 
-async def get_json_from_url(session, url) -> dict:
+async def get_json_from_url(
+    session: aiohttp.client.ClientSession,
+    url: URL,
+) -> dict:
     """Query a REST API endpoint and return the decoded JSON"""
     LOGGER.debug('About to query %s', url)
     async with session.get(url) as response:
@@ -49,7 +54,9 @@ async def get_json_from_url(session, url) -> dict:
             return None
 
 
-async def get_jenkins_crumb(creds_jenkins=None):
+async def get_jenkins_crumb(
+    creds_jenkins: aiohttp.BasicAuth=None,
+) -> dict:
     """Get the crumb_header for Jenkins"""
     LOGGER.info('Setting up Jenkins authentication.')
     if not creds_jenkins:
@@ -65,7 +72,9 @@ async def get_jenkins_crumb(creds_jenkins=None):
     return crumb_header
 
 
-def extract_params(executable):
+def extract_params(
+        executable: dict,
+) -> dict:
     """Extract parameters from Jenkins response"""
     name_computer = executable['builtOn']
     for action in executable['actions']:

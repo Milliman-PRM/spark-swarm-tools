@@ -21,7 +21,10 @@ LOGGER = logging.getLogger(__name__)
 # =============================================================================
 
 
-async def evaluate_luigi_opportunity(session_jenkins, executable):
+async def evaluate_luigi_opportunity(
+    session_jenkins: aiohttp.client.ClientSession,
+    executable: dict,
+) -> None:
     """Evaluate opportunities to Flood Luigi jobs"""
     name_computer = executable['builtOn']
     LOGGER.info('%s Evaluating opportunities', name_computer)
