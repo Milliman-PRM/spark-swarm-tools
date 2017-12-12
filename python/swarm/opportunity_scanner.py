@@ -73,7 +73,7 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
         )
         if int(jobs[0]['numTasks']) == 1:
             LOGGER.info(
-                '%s Spark Application %s only working on 1 task, not swarming',
+                '%s Spark Application %s only working on 1 task, not going to swarm',
                 name_computer,
                 application['name'],
             )
