@@ -79,15 +79,19 @@ def extract_params(
     name_computer = executable['builtOn']
     for action in executable['actions']:
         if 'parameters' in action:
-            params_current = {
-                param['name']: str(param['value'])
-                for param in action['parameters']
-            }
-            LOGGER.debug(
-                '%s Found the current parameters: %s',
-                name_computer,
-                params_current,
-            )
+            try:
+                params_current = {
+                    param['name']: str(param['value'])
+                    for param in action['parameters']
+                }
+                LOGGER.debug(
+                    '%s Found the current parameters: %s',
+                    name_computer,
+                    params_current,
+                )
+            except KeyError:
+                LOGGER.error("%s Failed to extract params", name_computer)
+                return None
             break
     else:
         LOGGER.info('%s No build parameters found.', name_computer)
