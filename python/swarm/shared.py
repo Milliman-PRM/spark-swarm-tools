@@ -91,6 +91,7 @@ def extract_params(
                 )
             except KeyError:
                 LOGGER.error("%s Failed to extract params", name_computer)
+                return None
             break
     else:
         LOGGER.info('%s No build parameters found.', name_computer)
