@@ -9,6 +9,7 @@
 """
 import logging
 import asyncio
+import traceback
 
 import aiohttp
 from yarl import URL
@@ -40,6 +41,10 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
     except OSError:
         LOGGER.info('%s No Spark application found', name_computer)
         return None
+    except asyncio.TimeoutError:
+        LOGGER.error("%s Timed out trying to contact spark application", name_computer)
+        traceback.print_exc()
+        return None
 
     for application in applications:
         LOGGER.info(
@@ -62,6 +67,10 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
         )
     except OSError:
         LOGGER.info('%s Spark application %s no longer found', name_computer, application['name'])
+        return None
+    except asyncio.TimeoutError:
+        LOGGER.error("%s Timed out trying to contact spark application", name_computer)
+        traceback.print_exc()
         return None
 
     if jobs:
