@@ -4,6 +4,10 @@ This repository contains tools to enable emergent formation of multi-machine Spa
 
 For now, at least the `prm.spark.swarm` module in the [PRM/analytics-pipeline repository](https://indy-github.milliman.com/PRM/analytics-pipeline) is likely also necessary tooling (that is not provided here).
 
+## Releases
+
+Changes to this repo will be reviewed and signed off on in accordance with the [PRM Infrastructure and Security QRM Policies.](https://indy-github.milliman.com/PRM/PRM-HQ/blob/master/10_policies/PRM_Analytics_QRM_Policy.md#infrastructuresecurity)
+
 ## Deployment
 
 This repository will have continuous deployment; a dedicated Jenkins job will checkout and execute this repository periodically.
