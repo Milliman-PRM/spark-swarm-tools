@@ -6,6 +6,7 @@
   - [ ] Updated release notes
   - [ ] All files have appropriate code owners documented
   - [ ] Review with attestation
+  - [ ] Tag created after PR is merged
 
 
 ## Testing Results
