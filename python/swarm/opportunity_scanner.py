@@ -10,6 +10,8 @@
 import logging
 import asyncio
 import traceback
+from email.message import EmailMessage
+import smtplib
 
 import aiohttp
 from yarl import URL
@@ -165,7 +167,21 @@ async def detect_bad_apps(session_noauth, executable):
 
     n_spark_executors = len(worker_payload['finishedexecutors'])
 
-    LOGGER.info('Found %s Spark executors on %s', n_spark_executors, name_computer)
+    LOGGER.info('%s Found %s Spark executors', name_computer, n_spark_executors)
+
+    if n_spark_executors < 142:
+        return None
+
+    LOGGER.info('%s Sending a warning email about a hung Spark App', name_computer)
+    # Haven't figured out a way to remotely kill yet.
+    # And haven't loaded up an async email api
+    email_warning = EmailMessage()
+    email_warning["From"] = "noreply@milliman.com"
+    email_warning["To"] = "indy.helpdesk@milliman.com"
+    email_warning["Subject"] = "Likely hung Spark Application detected on {}".format(name_computer)
+
+    with smtplib.SMTP('smtp.milliman.com') as milliman_smtp:
+        milliman_smtp.send_message(email_warning)
 
 
 async def main(loop) -> int:
