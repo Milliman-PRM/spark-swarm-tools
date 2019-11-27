@@ -1,5 +1,9 @@
 # Release Notes
 
+## v1.1.0
+
+  - Detect and warn about likely hung Spark Applications
+
 ## v1.0.0
 
  - Created opportunity scanner for Spark jobs to build clusters
