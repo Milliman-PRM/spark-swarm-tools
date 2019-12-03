@@ -10,6 +10,8 @@
 import logging
 import asyncio
 import traceback
+from email.message import EmailMessage
+import smtplib
 
 import aiohttp
 from yarl import URL
@@ -143,6 +145,45 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
     return None
 
 
+async def detect_bad_apps(session_noauth, executable):
+    """Take a look and see if there are any bad apps running around"""
+    name_computer = executable['builtOn']
+    LOGGER.info('%s Evaluating opportunities', name_computer)
+    url_cattle = URL('http://' + name_computer)
+    url_spark_worker = url_cattle.with_port(8081)
+
+    try:
+        worker_payload = await shared.get_json_from_url(
+            session_noauth,
+            (url_spark_worker / 'json'),
+        )
+    except OSError:
+        LOGGER.info('%s No Spark worker found', name_computer)
+        return None
+    except asyncio.TimeoutError:
+        LOGGER.error("%s Timed out trying to contact spark worker", name_computer)
+        traceback.print_exc()
+        return None
+
+    n_spark_executors = len(worker_payload['finishedexecutors'])
+
+    LOGGER.info('%s Found %s Spark executors', name_computer, n_spark_executors)
+
+    if n_spark_executors < 142:
+        return None
+
+    LOGGER.info('%s Sending a warning email about a hung Spark App', name_computer)
+    # Haven't figured out a way to remotely kill yet.
+    # And haven't loaded up an async email api
+    email_warning = EmailMessage()
+    email_warning["From"] = "noreply@milliman.com"
+    email_warning["To"] = "indy.helpdesk@milliman.com"
+    email_warning["Subject"] = "Likely hung Spark Application detected on {}".format(name_computer)
+
+    with smtplib.SMTP('smtp.milliman.com') as milliman_smtp:
+        milliman_smtp.send_message(email_warning)
+
+
 async def main(loop) -> int:
     """A function to enclose the execution of business logic."""
     LOGGER.info('About to do something awesome.')
@@ -175,6 +216,10 @@ async def main(loop) -> int:
                 )
                 tasks_evaluation.append(loop.create_task(evaluate_opportunity(
                     session_jenkins,
+                    session_noauth,
+                    executable,
+                )))
+                tasks_evaluation.append(loop.create_task(detect_bad_apps(
                     session_noauth,
                     executable,
                 )))
