@@ -113,6 +113,8 @@ async def evaluate_opportunity(session_jenkins, session_noauth, executable):
     queue = await shared.get_json_from_url(session_jenkins, shared.URL_JENKINS_QUEUE)
     for item in queue['items']:
         LOGGER.debug('Found the following queue item %s', item)
+        if item['task']['_class'] != "hudson.model.FreeStyleProject":
+            continue
         # Stupid off by one due to trailing slash...
         if item['task']['url'].lower()[:-1] == str(url_job).lower():
             LOGGER.info('%s is already in queue to be swarmed', url_job)

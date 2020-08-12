@@ -1,5 +1,8 @@
 # Release Notes
 
+## v1.2.0
+  - Ignore non-FreeStyle Project jobs since they don't swarm at this time
+
 ## v1.1.0
 
   - Detect and warn about likely hung Spark Applications
