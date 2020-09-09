@@ -91,6 +91,8 @@ async def main(loop):
                 executable = executor['currentExecutable']
                 if not executable:
                     continue
+                if 'builtOn' not in executable:
+                    continue
                 LOGGER.info(
                     '%s is building %s',
                     executable['builtOn'],

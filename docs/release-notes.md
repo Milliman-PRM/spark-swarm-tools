@@ -1,5 +1,8 @@
 # Release Notes
 
+## v1.2.1
+  - Ignore executors with key missing metadata (e.g. `builtOn`)
+
 ## v1.2.0
   - Ignore non-FreeStyle Project jobs since they don't swarm at this time
 
