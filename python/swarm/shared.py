@@ -16,7 +16,7 @@ import aiohttp
 from yarl import URL
 
 LOGGER = logging.getLogger(__name__)
-PATH_JENKINS_CONFIG = Path('H:/.jenkinsdev')
+PATH_JENKINS_CONFIG = Path('H:/.jenkins')
 URL_JENKINS = URL('http://indy-jenkinsdev.milliman.com')
 URL_JENKINS_QUEUE = (URL_JENKINS / 'queue' / 'api' / 'json').with_query({
     'tree': 'items[task[url]]'
