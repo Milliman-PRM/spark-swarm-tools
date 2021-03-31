@@ -1,5 +1,8 @@
 # Release Notes
 
+## v1.2.2
+  - Luigi flooder now ignores tasks in Jenkins queue with missing `URL` attribute
+
 ## v1.2.1
   - Ignore executors with key missing metadata (e.g. `builtOn`)
 
