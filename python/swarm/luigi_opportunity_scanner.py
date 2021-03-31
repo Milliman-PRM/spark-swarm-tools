@@ -46,7 +46,7 @@ async def evaluate_luigi_opportunity(
                 LOGGER.info('%s is already in queue to be Flooded', url_job)
                 return None
         except KeyError:
-            LOGGER.warning("This queue item does not have a URL attribute %s", item)
+            LOGGER.info("This queue item does not have a URL attribute %s", item)
 
     params_new = params_current.copy()
     LOGGER.info(
