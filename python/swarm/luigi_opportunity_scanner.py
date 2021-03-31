@@ -41,9 +41,12 @@ async def evaluate_luigi_opportunity(
     for item in queue['items']:
         LOGGER.debug('Found the following queue item %s', item)
         # Stupid off by one due to trailing slash...
-        if item['task']['url'].lower()[:-1] == str(url_job).lower():
-            LOGGER.info('%s is already in queue to be Flooded', url_job)
-            return None
+        try:
+            if item['task']['url'].lower()[:-1] == str(url_job).lower():
+                LOGGER.info('%s is already in queue to be Flooded', url_job)
+                return None
+        except KeyError:
+            LOGGER.warning("This queue item does not have a URL attribute %s", item)
 
     params_new = params_current.copy()
     LOGGER.info(
