@@ -240,7 +240,7 @@ if __name__ == '__main__':
     import sys
     logging.basicConfig(
         stream=sys.stdout,
-        level=logging.INFO,
+        level=logging.DEBUG,
         format='%(asctime)s|%(name)s|%(levelname)s|%(message)s',
     )
 
